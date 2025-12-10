@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Review Sentiment Analyzer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f9fafb;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 24px;
+            max-width: 480px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            padding: 12px;
+            font-size: 1rem;
+            resize: vertical;
+            font-family: inherit;
+        }
+        button {
+            margin-top: 16px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #1e40af;
+        }
+        .result-card {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            background-color: #f3f4f6;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            pointer-events: none;
+        }
+        .result-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .sentiment {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .emoji {
+            font-size: 2rem;
+        }
+        .confidence {
+            font-size: 1rem;
+            color: #4b5563;
+        }
+        .aspects {
+            margin-top: 12px;
+            font-size: 0.95rem;
+        }
+        .aspect {
+            margin-bottom: 6px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container" role="main">
+        <label for="reviewInput">Enter your review:</label>
+        <textarea id="reviewInput" aria-label="Review input" placeholder="Type your review here..."></textarea>
+        <button id="analyzeBtn">Analyze Review</button>
+        <section id="resultCard" class="result-card" aria-live="polite" aria-atomic="true" aria-relevant="additions">
+            <div class="sentiment" id="sentimentText">Sentiment: <span></span></div>
+            <div class="emoji" id="emoji"></div>
+            <div class="confidence" id="confidence">Confidence: <span></span></div>
+            <div class="aspects" id="aspects"></div>
+        </section>
+    </main>
+
+    <script>
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const reviewInput = document.getElementById('reviewInput');
+        const resultCard = document.getElementById('resultCard');
+        const sentimentText = document.getElementById('sentimentText').querySelector('span');
+        const emoji = document.getElementById('emoji');
+        const confidence = document.getElementById('confidence').querySelector('span');
+        const aspects = document.getElementById('aspects');
+
+        analyzeBtn.addEventListener('click', async () => {
+            const review = reviewInput.value.trim();
+            if (!review) {
+                alert('Please enter a review before analyzing.');
+                return;
+            }
+
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = 'Analyzing...';
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ review })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to analyze review');
+                }
+
+                const data = await response.json();
+
+                sentimentText.textContent = data.sentiment.charAt(0).toUpperCase() + data.sentiment.slice(1);
+                emoji.textContent = data.emoji;
+                confidence.textContent = (data.score * 100).toFixed(1) + '%';
+
+                // Render aspects
+                aspects.innerHTML = '';
+                for (const [aspect, val] of Object.entries(data.aspects)) {
+                    const div = document.createElement('div');
+                    div.className = 'aspect';
+                    div.textContent = `${aspect.charAt(0).toUpperCase() + aspect.slice(1)}: ${val}`;
+                    aspects.appendChild(div);
+                }
+
+                resultCard.classList.add('visible');
+            } catch (error) {
+                alert('Error analyzing review. Please try again later.');
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = 'Analyze Review';
+            }
+        });
+    </script>
+</body>
+</html>
